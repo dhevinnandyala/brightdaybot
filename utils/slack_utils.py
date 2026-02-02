@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from slack_sdk.errors import SlackApiError
 
 from config import username_cache, ADMIN_USERS, COMMAND_PERMISSIONS, get_logger
@@ -5,7 +7,7 @@ from config import username_cache, ADMIN_USERS, COMMAND_PERMISSIONS, get_logger
 logger = get_logger("slack")
 
 
-def get_username(app, user_id):
+def get_username(app: object, user_id: str) -> str:
     """
     Get user's display name from their ID, with caching
 
@@ -37,7 +39,7 @@ def get_username(app, user_id):
     return f"{get_user_mention(user_id)}"
 
 
-def get_user_mention(user_id):
+def get_user_mention(user_id: str) -> str:
     """
     Get a formatted mention for a user
 
@@ -50,9 +52,12 @@ def get_user_mention(user_id):
     return f"<@{user_id}>" if user_id else "Unknown User"
 
 
-def is_admin(app, user_id):
+def is_admin(app: object, user_id: str) -> bool:
     """
-    Check if user is an admin (workspace admin or in ADMIN_USERS list)
+    Check if user is an admin (workspace admin or in ADMIN_USERS list).
+
+    Uses the in-memory ADMIN_USERS list (kept in sync by admin add/remove
+    commands) instead of reading from disk on every call.
 
     Args:
         app: Slack app instance
@@ -61,16 +66,10 @@ def is_admin(app, user_id):
     Returns:
         True if user is admin, False otherwise
     """
-    # Get the current admin list from config
-    from utils.config_storage import get_current_admins
-
-    current_admins = get_current_admins()
-
-    # First, check if user is in the manually configured admin list
-    if user_id in current_admins:
-        username = get_username(app, user_id)
+    # First, check if user is in the in-memory admin list
+    if user_id in ADMIN_USERS:
         logger.debug(
-            f"PERMISSIONS: {username} ({user_id}) is admin via ADMIN_USERS list"
+            f"PERMISSIONS: {user_id} is admin via ADMIN_USERS list"
         )
         return True
 
@@ -80,9 +79,8 @@ def is_admin(app, user_id):
         is_workspace_admin = user_info.get("user", {}).get("is_admin", False)
 
         if is_workspace_admin:
-            username = get_username(app, user_id)
             logger.debug(
-                f"PERMISSIONS: {username} ({user_id}) is admin via workspace permissions"
+                f"PERMISSIONS: {user_id} is admin via workspace permissions"
             )
 
         return is_workspace_admin
@@ -91,7 +89,7 @@ def is_admin(app, user_id):
         return False
 
 
-def check_command_permission(app, user_id, command):
+def check_command_permission(app: object, user_id: str, command: str) -> bool:
     """
     Check if a user has permission to use a specific command
 
@@ -115,7 +113,7 @@ def check_command_permission(app, user_id, command):
     return True
 
 
-def get_channel_members(app, channel_id):
+def get_channel_members(app: object, channel_id: str) -> list[str]:
     """
     Get all members of a channel with pagination support
 
@@ -160,7 +158,7 @@ def get_channel_members(app, channel_id):
         return []
 
 
-def send_message(app, channel: str, text: str, blocks=None):
+def send_message(app: object, channel: str, text: str, blocks: list | None = None) -> bool:
     """
     Send a message to a Slack channel with error handling
 

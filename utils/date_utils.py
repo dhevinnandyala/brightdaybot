@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from datetime import datetime, timezone, timedelta
 from calendar import month_name
@@ -7,7 +9,7 @@ from config import DATE_FORMAT, DATE_WITH_YEAR_FORMAT, get_logger
 logger = get_logger("date")
 
 
-def extract_date(message: str) -> dict:
+def extract_date(message: str) -> dict[str, str | int | None]:
     """
     Extract the first found date from a message
 
@@ -46,7 +48,7 @@ def extract_date(message: str) -> dict:
         return {"status": "invalid_date", "date": None, "year": None}
 
 
-def date_to_words(date: str, year: int = None) -> str:
+def date_to_words(date: str, year: int | None = None) -> str:
     """
     Convert date in DD/MM to readable format, optionally including year
 
@@ -73,21 +75,30 @@ def date_to_words(date: str, year: int = None) -> str:
     return f"{day_str} of {month}"
 
 
-def calculate_age(birth_year: int) -> int:
+def calculate_age(birth_year: int, birth_date: str | None = None) -> int:
     """
-    Calculate age based on birth year
+    Calculate age based on birth year, optionally accounting for month/day.
 
     Args:
         birth_year: Year of birth
+        birth_date: Optional date in DD/MM format for precise age calculation
 
     Returns:
         Current age
     """
-    current_year = datetime.now().year
-    return current_year - birth_year
+    today = datetime.now()
+    age = today.year - birth_year
+    if birth_date:
+        try:
+            day, month = map(int, birth_date.split("/"))
+            if (today.month, today.day) < (month, day):
+                age -= 1
+        except (ValueError, IndexError):
+            pass
+    return age
 
 
-def check_if_birthday_today(date_str, reference_date=None):
+def check_if_birthday_today(date_str: str, reference_date: datetime | None = None) -> bool:
     """
     Check if a date string in DD/MM format matches today's date
 
@@ -107,7 +118,7 @@ def check_if_birthday_today(date_str, reference_date=None):
     return day == reference_date.day and month == reference_date.month
 
 
-def calculate_days_until_birthday(date_str, reference_date=None):
+def calculate_days_until_birthday(date_str: str, reference_date: datetime | None = None) -> int:
     """
     Calculate days until a birthday
 
@@ -165,8 +176,7 @@ def calculate_days_until_birthday(date_str, reference_date=None):
         return days_until
 
 
-# Star sign mapping
-def get_star_sign(date_str):
+def get_star_sign(date_str: str) -> str | None:
     """Get star sign from a date string in DD/MM format"""
     try:
         day, month = map(int, date_str.split("/"))

@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from openai import OpenAI
 import logging
 import os
+import re
 import random
 import argparse
 import sys
@@ -135,10 +138,10 @@ def create_birthday_announcement(
     # Parse the date
     try:
         day, month = map(int, date_str.split("/"))
-        date_obj = datetime(2025, month, day)  # Using current year just for formatting
+        date_obj = datetime(2000, month, day)  # Using leap year for formatting
         month_name_str = date_obj.strftime("%B")
         day_num = date_obj.day
-    except:
+    except (ValueError, IndexError):
         month_name_str = "Unknown Month"
         day_num = "??"
 
@@ -205,6 +208,32 @@ def create_birthday_announcement(
 <!channel> Let's celebrate together!
 """
     return message.strip()
+
+
+def send_birthday_announcement(app, channel, username, user_id, date, date_words, year=None):
+    """
+    Try AI message, fall back to template announcement.
+
+    Args:
+        app: Slack app instance
+        channel: Channel ID to send to
+        username: Display name
+        user_id: Slack user ID
+        date: Birthday in DD/MM format
+        date_words: Birthday in human-readable form
+        year: Optional birth year
+    """
+    from utils.slack_utils import send_message
+
+    try:
+        ai_message = completion(username, date_words, user_id, date, year)
+        send_message(app, channel, ai_message)
+    except Exception as e:
+        logger.error(
+            f"AI_ERROR: Failed to generate immediate birthday message: {e}"
+        )
+        announcement = create_birthday_announcement(user_id, username, date, year)
+        send_message(app, channel, announcement)
 
 
 # Backup birthday messages for fallback if the API fails
@@ -382,17 +411,6 @@ def completion(
         Today is {datetime.now().strftime('%Y-%m-%d')}.
     """
 
-    # Add extra emphasis for validation requirements
-    if max_retries > 0:
-        user_content += f"""
-        
-        CRITICAL: The message MUST contain both:
-        1. The exact user mention format: "{user_mention}"
-        2. The exact channel mention format: "<!channel>"
-        
-        Previous attempts failed to include these required mention formats. Please ensure they're included.
-        """
-
     # Add user message to template
     template.append({"role": "user", "content": user_content})
 
@@ -494,8 +512,6 @@ def fix_slack_formatting(text):
     Returns:
         Fixed text with Slack-compatible formatting
     """
-    import re
-
     # Fix bold formatting: Replace **bold** with *bold*
     text = re.sub(r"\*\*(.*?)\*\*", r"*\1*", text)
 
@@ -505,31 +521,6 @@ def fix_slack_formatting(text):
 
     # Fix markdown links: Replace [text](url) with <url|text>
     text = re.sub(r"\[(.*?)\]\((.*?)\)", r"<\2|\1>", text)
-
-    # Fix emoji format: Ensure emoji codes have colons on both sides
-    text = re.sub(
-        r"(?<!\:)([a-z0-9_+-]+)(?!\:)",
-        lambda m: (
-            m.group(1)
-            if m.group(1)
-            in [
-                "and",
-                "the",
-                "to",
-                "for",
-                "with",
-                "in",
-                "of",
-                "on",
-                "at",
-                "by",
-                "from",
-                "as",
-            ]
-            else m.group(1)
-        ),
-        text,
-    )
 
     # Fix markdown headers with # to just bold text
     text = re.sub(r"^(#{1,6})\s+(.*?)$", r"*\2*", text, flags=re.MULTILINE)

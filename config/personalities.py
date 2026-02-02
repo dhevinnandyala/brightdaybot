@@ -1,132 +1,21 @@
 import os
-from dotenv import load_dotenv
-import logging
 
-# Load environment variables first - this should be at the very top
-load_dotenv()
-
-# ----- FILE STRUCTURE CONFIGURATION -----
-
-# Directory structure definitions
-DATA_DIR = "data"
-LOGS_DIR = os.path.join(DATA_DIR, "logs")
-STORAGE_DIR = os.path.join(DATA_DIR, "storage")
-TRACKING_DIR = os.path.join(DATA_DIR, "tracking")
-BACKUP_DIR = os.path.join(DATA_DIR, "backups")
-MAX_BACKUPS = 10  # Keep last 10 backups
-CACHE_DIR = os.path.join(DATA_DIR, "cache")
-WEB_SEARCH_CACHE_ENABLED = (
-    os.getenv("WEB_SEARCH_CACHE_ENABLED", "true").lower() == "true"
-)
-
-# File paths
-LOG_FILE = os.path.join(LOGS_DIR, "app.log")
-BIRTHDAYS_FILE = os.path.join(STORAGE_DIR, "birthdays.txt")
-
-# ----- LOGGING CONFIGURATION -----
-
-# Set up logging formatter
-log_formatter = logging.Formatter("%(asctime)s - [%(levelname)s] %(name)s: %(message)s")
-
-# Create the parent directory for log file if it doesn't exist
-os.makedirs(LOGS_DIR, exist_ok=True)
-
-# Set up file handler
-file_handler = logging.FileHandler(LOG_FILE)
-file_handler.setFormatter(log_formatter)
-
-# Configure root logger
-root_logger = logging.getLogger("birthday_bot")
-root_logger.setLevel(logging.INFO)
-root_logger.addHandler(file_handler)
-
-
-# Function to get child loggers
-def get_logger(name):
-    """
-    Get a properly configured logger that inherits from the root logger
-    without adding duplicate handlers.
-
-    Args:
-        name: Logger name suffix (e.g., 'date' becomes 'birthday_bot.date')
-
-    Returns:
-        Configured logger instance
-    """
-    if not name.startswith("birthday_bot."):
-        name = f"birthday_bot.{name}"
-    return logging.getLogger(name)
-
-
-# Create the main logger
-logger = get_logger("main")
-
-
-# ----- CREATE DIRECTORY STRUCTURE -----
-
-# Now that we have logging set up, create the directory structure
-for directory in [DATA_DIR, LOGS_DIR, STORAGE_DIR, TRACKING_DIR, BACKUP_DIR, CACHE_DIR]:
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-        logger.info(f"CONFIG: Created directory {directory}")
-
-
-# ----- APPLICATION CONFIGURATION -----
-
-# Channel configuration
-BIRTHDAY_CHANNEL = os.getenv("BIRTHDAY_CHANNEL_ID")
-if not BIRTHDAY_CHANNEL:
-    logger.error("CONFIG_ERROR: BIRTHDAY_CHANNEL_ID not found in .env file")
-
-# Date format constants
-DATE_FORMAT = "%d/%m"
-DATE_WITH_YEAR_FORMAT = "%d/%m/%Y"
-
-# Scheduling configuration
-DAILY_CHECK_TIME = "08:00"  # Time to run daily birthday checks (8:00 AM UTC)
-
-# Message configuration
-DEFAULT_REMINDER_MESSAGE = None  # Set to None to use the dynamic message generator
-
-# ----- ACCESS CONTROL CONFIGURATION -----
-
-# Default admin users list - will be overridden by file-based storage
-DEFAULT_ADMIN_USERS = [
-    "U079Q4V8AJE",  # Example admin user
-    # Add more UIDs here
-]
-
-# Actual admin list will be populated from file in initialize_config()
-ADMIN_USERS = []
-
-# Permission settings - which commands require admin privileges
-COMMAND_PERMISSIONS = {
-    "list": True,  # True = admin only, False = available to all users
-    "stats": True,  # True = admin only, False = available to all users
-}
-
-# ----- PERFORMANCE OPTIMIZATIONS -----
-
-# Cache for username lookups to reduce API calls
-username_cache = {}
+from config.settings import BOT_NAME, TEAM_NAME
+from config.logging_setup import logger
 
 # ----- BOT PERSONALITY CUSTOMIZATION -----
 
 # Placeholder for current personality setting - will be loaded from file
 _current_personality = "standard"  # Default
 
-# Team and bot identity settings
-TEAM_NAME = 'Laboratory for Intelligent Global Health and Humanitarian Response Technologies ("LiGHT Lab")'
-BOT_NAME = "BrightDay"  # Default bot name
-
 # Base template that all personalities share
 BASE_TEMPLATE = """
-You are {name}, {description} for the {team_name} workspace. 
+You are {name}, {description} for the {team_name} workspace.
 Your job is to create lively, humorous birthday messages that will make people smile!
 
 IMPORTANT CONSTRAINTS:
-- Only use STANDARD SLACK EMOJIS like: :tada: :birthday: :cake: :balloon: :gift: :confetti_ball: :sparkles: 
-  :star: :heart: :champagne: :clap: :raised_hands: :crown: :trophy: :partying_face: :smile: 
+- Only use STANDARD SLACK EMOJIS like: :tada: :birthday: :cake: :balloon: :gift: :confetti_ball: :sparkles:
+  :star: :heart: :champagne: :clap: :raised_hands: :crown: :trophy: :partying_face: :smile:
   DO NOT use custom emojis like :birthday_party_parrot: or :rave: as they may not exist in all workspaces
 - DO NOT use Unicode emojis (like 🎂) - ONLY use Slack format with colons (:cake:)
 
@@ -298,48 +187,3 @@ def get_full_template_for_personality(personality_name):
         full_template += "\n" + personality["template_extension"]
 
     return full_template
-
-
-def initialize_config():
-    """Initialize configuration from storage files"""
-    global ADMIN_USERS, _current_personality, BOT_PERSONALITIES
-
-    # Import here to avoid circular imports
-    from utils.config_storage import (
-        load_admins_from_file,
-        load_personality_setting,
-        save_admins_to_file,
-    )
-
-    # Load admins
-    admin_users_from_file = load_admins_from_file()
-
-    if admin_users_from_file:
-        ADMIN_USERS = admin_users_from_file
-        logger.info(f"CONFIG: Loaded {len(ADMIN_USERS)} admin users from file")
-    else:
-        # If no admins in file, use defaults but make sure to maintain any existing ones
-        logger.info(f"CONFIG: No admins found in file, using default list")
-        # Add any default admins that aren't already in the list
-        for admin in DEFAULT_ADMIN_USERS:
-            if admin not in ADMIN_USERS:
-                ADMIN_USERS.append(admin)
-
-        # Save the combined list to file
-        save_admins_to_file(ADMIN_USERS)
-        logger.info(f"CONFIG: Saved {len(ADMIN_USERS)} default admin users to file")
-
-    # Add this debug print
-    logger.info(f"CONFIG: ADMIN_USERS now contains: {ADMIN_USERS}")
-
-    # Load personality settings
-    personality_name, custom_settings = load_personality_setting()
-    _current_personality = personality_name
-
-    # If there are custom settings, apply them
-    if custom_settings and isinstance(custom_settings, dict):
-        for key, value in custom_settings.items():
-            if key in BOT_PERSONALITIES["custom"]:
-                BOT_PERSONALITIES["custom"][key] = value
-
-    logger.info("CONFIG: Configuration initialized from storage files")

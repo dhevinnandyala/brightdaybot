@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from openai import OpenAI
 import json
 import os
@@ -12,7 +14,7 @@ logger = get_logger("web_search")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-def get_birthday_facts(date_str):
+def get_birthday_facts(date_str: str) -> dict | None:
     """
     Get interesting facts about a specific date (like notable birthdays, especially in science)
 
@@ -37,7 +39,7 @@ def get_birthday_facts(date_str):
     try:
         # Parse the date
         day, month = map(int, date_str.split("/"))
-        search_date = datetime(2025, month, day)  # Year doesn't matter for the search
+        search_date = datetime(2000, month, day)  # Year doesn't matter for the search
         formatted_date = search_date.strftime("%B %d")  # e.g. "April 15"
 
         search_query = f"Notable people (especially scientists) born on {formatted_date} and significant historical events on this day"
@@ -96,7 +98,7 @@ def get_birthday_facts(date_str):
         return None
 
 
-def process_facts_for_ludo(facts_text, formatted_date):
+def process_facts_for_ludo(facts_text: str, formatted_date: str) -> str:
     """
     Process the facts to create a concise, focused paragraph suitable for Ludo's mystical style
 
@@ -134,7 +136,7 @@ def process_facts_for_ludo(facts_text, formatted_date):
         return f"On this day, {formatted_date}, the cosmos aligned to welcome several notable souls to our realm."
 
 
-def clear_cache(date_str=None):
+def clear_cache(date_str: str | None = None) -> int:
     """
     Clear web search cache
 
@@ -248,7 +250,7 @@ def main():
             return
 
         print(f"\n=== Searching for facts about {args.date} ===")
-        date_obj = datetime(2025, month, day)  # Year doesn't matter
+        date_obj = datetime(2000, month, day)  # Year doesn't matter
         formatted_date = date_obj.strftime("%B %d")
         print(f"Searching for: {formatted_date}\n")
 

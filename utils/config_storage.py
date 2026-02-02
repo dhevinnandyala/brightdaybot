@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import json
 from config import STORAGE_DIR, get_logger
@@ -9,7 +11,7 @@ ADMINS_FILE = os.path.join(STORAGE_DIR, "admins.json")
 PERSONALITY_FILE = os.path.join(STORAGE_DIR, "personality.json")
 
 
-def save_admins_to_file(admin_list):
+def save_admins_to_file(admin_list: list[str]) -> bool:
     """
     Save admin user list to a file
 
@@ -37,7 +39,7 @@ def save_admins_to_file(admin_list):
         return False
 
 
-def load_admins_from_file():
+def load_admins_from_file() -> list[str]:
     """
     Load admin user list from file
 
@@ -67,7 +69,7 @@ def load_admins_from_file():
         return []
 
 
-def save_personality_setting(personality_name, custom_settings=None):
+def save_personality_setting(personality_name: str, custom_settings: dict | None = None) -> bool:
     """
     Save current personality setting and any custom personality settings
 
@@ -98,7 +100,7 @@ def save_personality_setting(personality_name, custom_settings=None):
         return False
 
 
-def load_personality_setting():
+def load_personality_setting() -> tuple[str, dict | None]:
     """
     Load personality settings from file
 
@@ -126,7 +128,7 @@ def load_personality_setting():
         return "standard", None
 
 
-def get_current_admins():
+def get_current_admins() -> list[str]:
     """Get the current admin list from file"""
     # Always load fresh from the file to ensure we have the latest
     return load_admins_from_file()

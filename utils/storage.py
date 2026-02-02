@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 from datetime import datetime
@@ -6,7 +8,7 @@ from config import BACKUP_DIR, MAX_BACKUPS, BIRTHDAYS_FILE, TRACKING_DIR, get_lo
 logger = get_logger("storage")
 
 
-def create_backup():
+def create_backup() -> None:
     """
     Create a timestamped backup of the birthdays file
     """
@@ -35,7 +37,7 @@ def create_backup():
         logger.error(f"BACKUP_ERROR: Failed to create backup: {e}")
 
 
-def rotate_backups():
+def rotate_backups() -> None:
     """
     Maintain only the specified number of most recent backups
     """
@@ -60,12 +62,12 @@ def rotate_backups():
         logger.error(f"BACKUP_ERROR: Failed to rotate backups: {e}")
 
 
-def restore_latest_backup():
+def restore_latest_backup() -> bool:
     """
     Restore the most recent backup file
 
     Returns:
-        bool: True if restore succeeded, False otherwise
+        True if restore succeeded, False otherwise
     """
     try:
         # List all backup files
@@ -93,7 +95,7 @@ def restore_latest_backup():
         return False
 
 
-def load_birthdays():
+def load_birthdays() -> dict[str, dict[str, str | int | None]]:
     """
     Load birthdays from file into a dictionary.
     Compatible with both new format (with optional year) and old format (date only).
@@ -141,7 +143,7 @@ def load_birthdays():
     return birthdays
 
 
-def save_birthdays(birthdays):
+def save_birthdays(birthdays: dict[str, dict[str, str | int | None]]) -> None:
     """
     Save birthdays dictionary to file
 
@@ -217,7 +219,7 @@ def remove_birthday(user: str, username: str = None) -> bool:
     return False
 
 
-def get_announced_birthdays_today():
+def get_announced_birthdays_today() -> list[str]:
     """
     Get list of user IDs whose birthdays have already been announced today
 
@@ -239,7 +241,7 @@ def get_announced_birthdays_today():
         return []
 
 
-def mark_birthday_announced(user_id):
+def mark_birthday_announced(user_id: str) -> None:
     """
     Mark a user's birthday as announced for today
 
@@ -258,7 +260,7 @@ def mark_birthday_announced(user_id):
         logger.error(f"FILE_ERROR: Failed to mark birthday as announced: {e}")
 
 
-def cleanup_old_announcement_files():
+def cleanup_old_announcement_files() -> None:
     """
     Remove announcement tracking files older than today
     """

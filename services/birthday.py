@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 
 from utils.date_utils import check_if_birthday_today, date_to_words, get_star_sign
@@ -8,13 +10,13 @@ from utils.storage import (
     cleanup_old_announcement_files,
 )
 from utils.slack_utils import get_username, send_message, get_user_mention
-from utils.message_generator import completion, create_birthday_announcement
+from utils.message_generator import send_birthday_announcement
 from config import BIRTHDAY_CHANNEL, get_logger
 
 logger = get_logger("birthday")
 
 
-def send_reminder_to_users(app, users, custom_message=None):
+def send_reminder_to_users(app: object, users: list[str], custom_message: str | None = None) -> dict:
     """
     Send reminder message to multiple users
 
@@ -117,7 +119,7 @@ def send_reminder_to_users(app, users, custom_message=None):
     return results
 
 
-def daily(app, moment):
+def daily(app: object, moment: datetime) -> int:
     """
     Run daily tasks like birthday messages
 
@@ -154,41 +156,19 @@ def daily(app, moment):
             logger.info(f"BIRTHDAY: Today is {username}'s ({user_id}) birthday!")
             birthday_count += 1
 
-            try:
-                # Try to get personalized AI message first
-                date_words = date_to_words(
-                    birthday_data["date"], birthday_data.get("year")
-                )
-                ai_message = completion(
-                    username,
-                    date_words,
-                    user_id,
-                    birthday_data["date"],
-                    birthday_data.get("year"),
-                )
-                logger.info(f"AI: Generated birthday message for {username}")
-
-                # Send the AI-generated message
-                send_message(app, BIRTHDAY_CHANNEL, ai_message)
-
-                # Mark as announced
-                mark_birthday_announced(user_id)
-
-            except Exception as e:
-                logger.error(f"AI_ERROR: Failed to generate message: {e}")
-
-                # Fallback to generated announcement if AI fails
-                announcement = create_birthday_announcement(
-                    user_id,
-                    username,
-                    birthday_data["date"],
-                    birthday_data.get("year"),
-                    get_star_sign(birthday_data["date"]),
-                )
-                send_message(app, BIRTHDAY_CHANNEL, announcement)
-
-                # Mark as announced
-                mark_birthday_announced(user_id)
+            date_words = date_to_words(
+                birthday_data["date"], birthday_data.get("year")
+            )
+            send_birthday_announcement(
+                app,
+                BIRTHDAY_CHANNEL,
+                username,
+                user_id,
+                birthday_data["date"],
+                date_words,
+                birthday_data.get("year"),
+            )
+            mark_birthday_announced(user_id)
 
     if birthday_count == 0:
         logger.info("DAILY: No birthdays today")
